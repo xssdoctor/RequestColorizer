@@ -1,0 +1,29 @@
+{
+  "id": "colorizer",
+  "name": "Request Colorizer",
+  "version": "0.0.2",
+  "description": "Color HTTP requests by pattern - automatically colors similar requests with the same path, query parameters, and body",
+  "author": {
+    "name": "xssdoctor",
+    "email": "xssdoctors@gmail.com"
+  },
+  "links": {},
+  "plugins": [
+    {
+      "id": "colorizer-frontend",
+      "kind": "frontend",
+      "name": "frontend",
+      "entrypoint": "colorizer-frontend/index.js",
+      "backend": {
+        "id": "colorizer-backend"
+      }
+    },
+    {
+      "id": "colorizer-backend",
+      "kind": "backend",
+      "name": "backend",
+      "entrypoint": "colorizer-backend/index.js",
+      "runtime": "javascript"
+    }
+  ]
+}
