@@ -1,0 +1,76 @@
+/* Plugin-specific styles only - no global overrides */
+
+/* Color picker dialog styles - scoped to plugin */
+.colorizer-plugin dialog {
+  padding: 1.5rem;
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background: white;
+  color: black;
+  font-family: inherit;
+  z-index: 10000;
+}
+
+.colorizer-plugin dialog::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.colorizer-plugin dialog h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.1em;
+  font-weight: 600;
+  color: #333;
+}
+
+.colorizer-plugin dialog button {
+  margin: 0.25rem;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9em;
+  font-family: inherit;
+  transition: opacity 0.2s;
+}
+
+.colorizer-plugin dialog button:hover {
+  opacity: 0.8;
+}
+
+/* Color buttons */
+.colorizer-plugin dialog button[data-c="Red"] {
+  background: red;
+  color: white;
+}
+.colorizer-plugin dialog button[data-c="Orange"] {
+  background: orange;
+  color: white;
+}
+.colorizer-plugin dialog button[data-c="Yellow"] {
+  background: yellow;
+  color: black;
+}
+.colorizer-plugin dialog button[data-c="Green"] {
+  background: green;
+  color: white;
+}
+.colorizer-plugin dialog button[data-c="Blue"] {
+  background: blue;
+  color: white;
+}
+.colorizer-plugin dialog button[data-c="Purple"] {
+  background: purple;
+  color: white;
+}
+.colorizer-plugin dialog button[data-c="Grey"] {
+  background: grey;
+  color: white;
+}
+
+/* Cancel button */
+.colorizer-plugin dialog button[data-c=""] {
+  background: #6b7280;
+  color: white;
+}

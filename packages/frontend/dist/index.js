@@ -1,4 +1,4 @@
-const s = [
+const l = [
   "Red",
   "Orange",
   "Yellow",
@@ -6,8 +6,8 @@ const s = [
   "Blue",
   "Purple",
   "Grey"
-], l = /* @__PURE__ */ new Map();
-async function u(e, r, t) {
+], s = /* @__PURE__ */ new Map();
+async function u(r, e, t) {
   try {
     const a = {
       Red: "RED",
@@ -18,14 +18,14 @@ async function u(e, r, t) {
       Purple: "PURPLE",
       Grey: "GREY"
     }[String(t).trim()] || "YELLOW";
-    if (e.graphql && typeof e.graphql.updateRequestMetadata == "function")
+    if (r.graphql && typeof r.graphql.updateRequestMetadata == "function")
       try {
         const n = {
-          id: r,
+          id: e,
           input: {
             color: a
           }
-        }, i = await e.graphql.updateRequestMetadata(n);
+        }, i = await r.graphql.updateRequestMetadata(n);
         if (i && !i.errors)
           return !0;
       } catch {
@@ -35,42 +35,42 @@ async function u(e, r, t) {
     return !1;
   }
 }
-async function c(e, r, t) {
+async function c(r, e, t) {
   try {
-    return l.set(e, r), t ? await u(t, e, r) : !1;
+    return s.set(r, e), t ? await u(t, r, e) : !1;
   } catch {
     return !1;
   }
 }
-async function p(e) {
+async function p(r) {
   try {
-    e.commands.register("colorize.similar", {
+    r.commands.register("colorize.similar", {
       name: "Color similar requests…",
-      async run(r) {
+      async run(e) {
         var t;
         try {
-          const o = r.request ?? ((t = r.requests) == null ? void 0 : t[0]);
+          const o = e.request ?? ((t = e.requests) == null ? void 0 : t[0]);
           if (!(o != null && o.id))
             return;
           const a = await d();
           if (!a) return;
-          await e.backend.addHighlightRule(o.id, a), await c(o.id, a, e);
+          await r.backend.addHighlightRule(o.id, a), await c(o.id, a, r);
         } catch {
         }
       }
-    }), e.menu.registerItem({
+    }), r.menu.registerItem({
       type: "Request",
       commandId: "colorize.similar",
       leadingIcon: "fas fa-palette"
-    }), e.menu.registerItem({
+    }), r.menu.registerItem({
       type: "RequestRow",
       commandId: "colorize.similar",
       leadingIcon: "fas fa-palette"
-    }), e.backend.onEvent(
+    }), r.backend.onEvent(
       "request-matched",
-      async (r, t, o) => {
+      async (e, t, o) => {
         try {
-          await c(r, t, e);
+          await c(e, t, r);
         } catch {
         }
       }
@@ -79,25 +79,45 @@ async function p(e) {
   }
 }
 async function d() {
-  return new Promise((e) => {
+  return new Promise((r) => {
     try {
-      const r = document.createElement("dialog");
-      r.innerHTML = `
+      const e = document.createElement("dialog");
+      e.className = "colorizer-plugin", e.innerHTML = `
         <style>
-          dialog { padding:1.5rem; border:none; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15); }
-          button { margin:.25rem; padding:.75rem 1rem; border:none; border-radius:6px; cursor:pointer; font-size:.9em; }
+          .colorizer-plugin dialog { 
+            padding:1.5rem; 
+            border:none; 
+            border-radius:8px; 
+            box-shadow:0 4px 12px rgba(0,0,0,0.15); 
+            background: white;
+            color: black;
+          }
+          .colorizer-plugin button { 
+            margin:.25rem; 
+            padding:.75rem 1rem; 
+            border:none; 
+            border-radius:6px; 
+            cursor:pointer; 
+            font-size:.9em; 
+          }
+          .colorizer-plugin h3 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            font-size: 1.1em;
+            font-weight: 600;
+          }
         </style>
         <h3>Choose a color</h3>
-        ${s.map(
+        ${l.map(
         (t) => `<button data-c="${t}" style="background:${t.toLowerCase()};color:white">${t}</button>`
       ).join("")}
-        <button data-c="">Cancel</button>
-      `, r.addEventListener("click", (t) => {
+        <button data-c="" style="background:#6b7280;color:white">Cancel</button>
+      `, e.addEventListener("click", (t) => {
         const o = t.target.closest("button");
-        r.close(), e((o == null ? void 0 : o.dataset.c) || void 0);
-      }), document.body.append(r), r.showModal();
+        e.close(), r((o == null ? void 0 : o.dataset.c) || void 0);
+      }), document.body.append(e), e.showModal();
     } catch {
-      e(void 0);
+      r(void 0);
     }
   });
 }

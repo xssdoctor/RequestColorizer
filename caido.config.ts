@@ -19,6 +19,15 @@ export default defineConfig({
       backend: {
         id: "colorizer-backend",
       },
+      vite: {
+        css: {
+          postcss: {
+            plugins: [
+              // Only process plugin-specific styles, don't affect global Caido styles
+            ],
+          },
+        },
+      },
     },
     { kind: "backend", id: "colorizer-backend", root: "packages/backend" },
   ],

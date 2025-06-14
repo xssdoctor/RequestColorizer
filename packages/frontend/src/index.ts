@@ -166,17 +166,38 @@ async function pickColour(): Promise<HighlightColour | undefined> {
   return new Promise((resolve) => {
     try {
       const dlg = document.createElement("dialog");
+      dlg.className = "colorizer-plugin";
       dlg.innerHTML = `
         <style>
-          dialog { padding:1.5rem; border:none; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15); }
-          button { margin:.25rem; padding:.75rem 1rem; border:none; border-radius:6px; cursor:pointer; font-size:.9em; }
+          .colorizer-plugin dialog { 
+            padding:1.5rem; 
+            border:none; 
+            border-radius:8px; 
+            box-shadow:0 4px 12px rgba(0,0,0,0.15); 
+            background: white;
+            color: black;
+          }
+          .colorizer-plugin button { 
+            margin:.25rem; 
+            padding:.75rem 1rem; 
+            border:none; 
+            border-radius:6px; 
+            cursor:pointer; 
+            font-size:.9em; 
+          }
+          .colorizer-plugin h3 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            font-size: 1.1em;
+            font-weight: 600;
+          }
         </style>
         <h3>Choose a color</h3>
         ${COLOURS.map(
           (c) =>
             `<button data-c="${c}" style="background:${c.toLowerCase()};color:white">${c}</button>`
         ).join("")}
-        <button data-c="">Cancel</button>
+        <button data-c="" style="background:#6b7280;color:white">Cancel</button>
       `;
       dlg.addEventListener("click", (e: Event) => {
         const btn = (e.target as HTMLElement).closest("button");

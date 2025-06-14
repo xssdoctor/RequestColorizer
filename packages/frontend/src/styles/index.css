@@ -1,5 +1,72 @@
-@import "./caido.css";
-@import "./primevue.css";
-@import "tailwindcss/base";
-@import "tailwindcss/components";
-@import "tailwindcss/utilities";
+/* Plugin-specific styles only - no global overrides */
+@import "./plugin-only.css";
+
+/* Only import Tailwind utilities for plugin components */
+.colorizer-plugin {
+  /* Basic utility classes for plugin components only */
+  --tw-bg-opacity: 1;
+  --tw-text-opacity: 1;
+  --tw-border-opacity: 1;
+}
+
+/* Plugin-specific utility classes */
+.colorizer-plugin .p-4 {
+  padding: 1rem;
+}
+.colorizer-plugin .p-2 {
+  padding: 0.5rem;
+}
+.colorizer-plugin .m-2 {
+  margin: 0.5rem;
+}
+.colorizer-plugin .rounded {
+  border-radius: 0.25rem;
+}
+.colorizer-plugin .rounded-lg {
+  border-radius: 0.5rem;
+}
+.colorizer-plugin .border {
+  border-width: 1px;
+}
+.colorizer-plugin .shadow {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+.colorizer-plugin .shadow-lg {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+.colorizer-plugin .text-sm {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+.colorizer-plugin .text-base {
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+.colorizer-plugin .font-medium {
+  font-weight: 500;
+}
+.colorizer-plugin .cursor-pointer {
+  cursor: pointer;
+}
+.colorizer-plugin .block {
+  display: block;
+}
+.colorizer-plugin .inline-block {
+  display: inline-block;
+}
+.colorizer-plugin .flex {
+  display: flex;
+}
+.colorizer-plugin .items-center {
+  align-items: center;
+}
+.colorizer-plugin .justify-center {
+  justify-content: center;
+}
+.colorizer-plugin .space-x-2 > * + * {
+  margin-left: 0.5rem;
+}
+.colorizer-plugin .space-y-2 > * + * {
+  margin-top: 0.5rem;
+}
