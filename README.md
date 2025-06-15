@@ -105,7 +105,6 @@ caido-colorizer/
 ├── packages/
 │   ├── backend/          # Backend logic (pattern matching, database)
 │   ├── frontend/         # Frontend UI (color picker, GraphQL calls)
-│   └── shared/           # Shared types and utilities
 ├── manifest.json         # Plugin metadata
 └── caido.config.ts      # Build configuration
 ```

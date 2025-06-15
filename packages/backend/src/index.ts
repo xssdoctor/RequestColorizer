@@ -1,5 +1,3 @@
-// packages/backend/src/index.ts
-
 import type { DefineAPI, DefineEvents, SDK } from "caido:plugin";
 
 // 1) Define your set of allowed colours
