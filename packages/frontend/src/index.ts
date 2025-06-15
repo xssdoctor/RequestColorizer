@@ -92,7 +92,6 @@ export async function init(sdk: FrontendSDK): Promise<void> {
   sdk.backend.onEvent(
     "request-matched",
     async (ids: string[], colour: HighlightColour) => {
-      console.log("request-matched", ids, colour);
       for (const id of ids) {
         await applyColorToRequest(id, colour, sdk);
       }

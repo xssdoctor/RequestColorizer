@@ -85,7 +85,6 @@ export async function init(sdk: SDK<API, Events>): Promise<void> {
     sdk.api.send("request-matched", [requestId], colour);
 
     const httpqlFilter = `req.method.cont:"${method}" AND req.host.cont:"${host}" AND req.path.cont:"${path}"`;
-    sdk.console.log("httpqlFilter: " + httpqlFilter);
 
     let hasNextPage = true;
     let after: string | undefined = undefined;
@@ -94,7 +93,6 @@ export async function init(sdk: SDK<API, Events>): Promise<void> {
 
     let currentBatch: string[] = [];
 
-    sdk.console.log("Starting retroactive matching");
     while (hasNextPage) {
       const query = after
         ? sdk.requests.query().filter(httpqlFilter).first(pageSize).after(after)
@@ -110,7 +108,6 @@ export async function init(sdk: SDK<API, Events>): Promise<void> {
         currentBatch.push(candidateRequest.getId());
 
         if (currentBatch.length >= batchSize) {
-          sdk.console.log("Sending batch", currentBatch);
           sdk.api.send("request-matched", currentBatch, colour);
           currentBatch = [];
         }
@@ -123,7 +120,6 @@ export async function init(sdk: SDK<API, Events>): Promise<void> {
     }
 
     if (currentBatch.length > 0) {
-      sdk.console.log("Sending final batch: " + currentBatch);
       sdk.api.send("request-matched", currentBatch, colour);
     }
   });
