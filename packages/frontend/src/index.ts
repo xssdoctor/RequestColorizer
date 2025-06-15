@@ -14,14 +14,22 @@ export type HighlightColour = (typeof COLOURS)[number];
 
 // Define the API and Events types locally
 export type API = {
-  addHighlightRule(requestId: string, colour: HighlightColour): Promise<void>;
+  addHighlightRule(
+    requestId: string,
+    method: string,
+    host: string,
+    path: string,
+    colour: HighlightColour
+  ): Promise<void>;
 };
 
 type Events = {
-  "request-matched": (
-    id: string,
-    colour: HighlightColour,
-    findingId: string
+  "requests-matched": (
+    matches: Array<{
+      id: string;
+      colour: HighlightColour;
+      findingId: string;
+    }>
   ) => void;
 };
 
@@ -105,6 +113,39 @@ async function applyColorToRequest(
 }
 
 /**
+ * Apply colors to multiple requests in batch
+ */
+async function applyColorsToRequests(
+  matches: Array<{ id: string; colour: HighlightColour; findingId: string }>,
+  sdk?: any
+): Promise<void> {
+  if (!sdk || !matches.length) return;
+
+  // Process in smaller batches to avoid overwhelming the UI
+  const PROCESS_BATCH_SIZE = 10;
+
+  for (let i = 0; i < matches.length; i += PROCESS_BATCH_SIZE) {
+    const batch = matches.slice(i, i + PROCESS_BATCH_SIZE);
+
+    // Process batch in parallel
+    const promises = batch.map((match) =>
+      applyColorToRequest(match.id, match.colour, sdk)
+    );
+
+    try {
+      await Promise.all(promises);
+    } catch (error) {
+      // Continue with next batch even if some fail
+    }
+
+    // Small delay between batches to prevent UI blocking
+    if (i + PROCESS_BATCH_SIZE < matches.length) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+  }
+}
+
+/**
  * Frontend entry point — Caido calls this when the plugin loads.
  */
 export async function init(sdk: Caido<API, Events>): Promise<void> {
@@ -122,7 +163,13 @@ export async function init(sdk: Caido<API, Events>): Promise<void> {
           if (!colour) return;
 
           // Store in backend for future matching
-          await sdk.backend.addHighlightRule(req.id, colour);
+          await sdk.backend.addHighlightRule(
+            req.id,
+            req.method,
+            req.host,
+            req.path,
+            colour
+          );
 
           // Apply color immediately via GraphQL
           await applyColorToRequest(req.id, colour, sdk);
@@ -145,10 +192,16 @@ export async function init(sdk: Caido<API, Events>): Promise<void> {
     });
 
     sdk.backend.onEvent(
-      "request-matched",
-      async (requestId: string, colour: HighlightColour, findingId: string) => {
+      "requests-matched",
+      async (
+        matches: Array<{
+          id: string;
+          colour: HighlightColour;
+          findingId: string;
+        }>
+      ) => {
         try {
-          await applyColorToRequest(requestId, colour, sdk);
+          await applyColorsToRequests(matches, sdk);
         } catch (error) {
           // Silent error handling
         }

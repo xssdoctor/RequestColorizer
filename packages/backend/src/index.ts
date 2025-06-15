@@ -17,19 +17,27 @@ export type HighlightColour = (typeof COLOURS)[number];
 // 2) RPC methods that frontend can call
 export type API = DefineAPI<{
   /**
-   * Frontend passes a request ID and a colour label;
-   * backend will look up the actual Request and store the pattern.
+   * Frontend passes request details and a colour label directly;
+   * backend will store the pattern without needing to fetch the request.
    */
-  addHighlightRule(requestId: string, colour: HighlightColour): Promise<void>;
+  addHighlightRule(
+    requestId: string,
+    method: string,
+    host: string,
+    path: string,
+    colour: HighlightColour
+  ): Promise<void>;
 }>;
 
 // 3) Events you emit to the frontend
 type Events = DefineEvents<{
-  /** Notify frontend that a request matched and should be colored */
-  "request-matched": (
-    id: string,
-    colour: HighlightColour,
-    findingId: string
+  /** Notify frontend that requests matched and should be colored (batched) */
+  "requests-matched": (
+    matches: Array<{
+      id: string;
+      colour: HighlightColour;
+      findingId: string;
+    }>
   ) => void;
 }>;
 
@@ -59,6 +67,35 @@ export async function init(sdk: SDK<API, Events>): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_highlights_path ON highlights(path);
     `);
 
+    // Cache for highlight rules - load once and update when needed
+    let highlightRules: Array<{
+      method: string;
+      host: string;
+      path: string;
+      colour: HighlightColour;
+    }> = [];
+
+    // Function to reload rules from database
+    const reloadHighlightRules = async () => {
+      try {
+        const stmt = await db.prepare(
+          "SELECT method, host, path, colour FROM highlights"
+        );
+        highlightRules = (await stmt.all()) as Array<{
+          method: string;
+          host: string;
+          path: string;
+          colour: HighlightColour;
+        }>;
+      } catch (error) {
+        // Silent error handling
+        highlightRules = [];
+      }
+    };
+
+    // Load rules initially
+    await reloadHighlightRules();
+
     // — Real-time matching for every new proxied request
     sdk.events.onInterceptRequest(async (_sdk: any, request: any) => {
       try {
@@ -66,31 +103,21 @@ export async function init(sdk: SDK<API, Events>): Promise<void> {
         const host = request.getHost();
         const path = request.getPath();
 
-        // Find all highlight rules and check if any match this request
-        const stmt = await db.prepare(
-          "SELECT method, host, path, colour FROM highlights"
-        );
-        const rules = (await stmt.all()) as Array<{
-          method: string;
-          host: string;
-          path: string;
-          colour: HighlightColour;
-        }>;
-
-        // Check each rule to see if this request matches
-        for (const rule of rules) {
+        // Use cached rules instead of querying database every time
+        for (const rule of highlightRules) {
           const methodMatches = method.includes(rule.method);
           const hostMatches = host.includes(rule.host);
           const pathMatches = path.includes(rule.path);
 
           if (methodMatches && hostMatches && pathMatches) {
-            // Send to frontend for coloring
-            sdk.api.send(
-              "request-matched",
-              request.getId(),
-              rule.colour,
-              "auto-color"
-            );
+            // Send single match to frontend for coloring
+            sdk.api.send("requests-matched", [
+              {
+                id: request.getId(),
+                colour: rule.colour,
+                findingId: "auto-color",
+              },
+            ]);
 
             // Break after first match to avoid duplicate coloring
             break;
@@ -104,54 +131,43 @@ export async function init(sdk: SDK<API, Events>): Promise<void> {
     // — RPC handler: frontend calls this to add a new coloring rule
     sdk.api.register(
       "addHighlightRule",
-      async (_sdk: any, requestId: string, colour: HighlightColour) => {
+      async (
+        _sdk: any,
+        requestId: string,
+        method: string,
+        host: string,
+        path: string,
+        colour: HighlightColour
+      ) => {
         try {
-          // 1) Get the request details
-          const reqResponse = await _sdk.requests.get(requestId);
-          if (!reqResponse || !reqResponse.request) {
-            throw new Error(`Request ${requestId} not found`);
-          }
-
-          const req = reqResponse.request;
-          const method = req.getMethod();
-          const host = req.getHost();
-          const path = req.getPath();
-
-          // 2) Store the coloring rule in database
+          // 1) Store the coloring rule in database using provided details
           const stmt = await db.prepare(
             "INSERT INTO highlights(method, host, path, colour) VALUES(?, ?, ?, ?)"
           );
           await stmt.run(method, host, path, colour);
 
-          // 3) Color the original request
-          sdk.api.send("request-matched", requestId, colour, "rule-added");
+          // 2) Reload rules cache after adding new rule
+          await reloadHighlightRules();
 
-          // 4) Find and color all existing matching requests
+          // 3) Color the original request
+          sdk.api.send("requests-matched", [
+            {
+              id: requestId,
+              colour: colour,
+              findingId: "rule-added",
+            },
+          ]);
+
+          // 4) Find and color all existing matching requests using proper pagination
           const httpqlFilter = `req.method.cont:"${method}" AND req.host.cont:"${host}" AND req.path.cont:"${path}"`;
 
-          const requestsQuery = _sdk.requests
-            .query()
-            .filter(httpqlFilter)
-            .first(100000);
-          const connection = await requestsQuery.execute();
-
-          let retroactiveCount = 0;
-          for (const item of connection.items) {
-            const candidateRequest = item.request;
-
-            // Skip the original request (already colored above)
-            if (candidateRequest.getId() === requestId) {
-              continue;
-            }
-
-            retroactiveCount++;
-            sdk.api.send(
-              "request-matched",
-              candidateRequest.getId(),
-              colour,
-              "retroactive-match"
-            );
-          }
+          await processMatchingRequestsInBatches(
+            _sdk,
+            httpqlFilter,
+            colour,
+            requestId,
+            sdk
+          );
         } catch (error) {
           throw error;
         }
@@ -159,5 +175,89 @@ export async function init(sdk: SDK<API, Events>): Promise<void> {
     );
   } catch (error) {
     // Silent error handling
+  }
+}
+
+/**
+ * Process matching requests in batches using proper pagination with cursors
+ */
+async function processMatchingRequestsInBatches(
+  _sdk: any,
+  httpqlFilter: string,
+  colour: HighlightColour,
+  originalRequestId: string,
+  sdk: SDK<API, Events>
+): Promise<void> {
+  const BATCH_SIZE = 1000;
+  const COLORIZE_BATCH_SIZE = 50; // Send colorization requests in smaller batches
+  let cursor: string | undefined = undefined;
+  let totalProcessed = 0;
+  let colorizeQueue: Array<{
+    id: string;
+    colour: HighlightColour;
+    findingId: string;
+  }> = [];
+
+  try {
+    do {
+      // Build query with cursor for pagination
+      let query = _sdk.requests.query().filter(httpqlFilter).first(BATCH_SIZE);
+
+      if (cursor) {
+        query = query.after(cursor);
+      }
+
+      const connection = await query.execute();
+
+      if (!connection.items || connection.items.length === 0) {
+        break;
+      }
+
+      // Process this batch
+      for (const item of connection.items) {
+        const candidateRequest = item.request;
+
+        // Skip the original request (already colored above)
+        if (candidateRequest.getId() === originalRequestId) {
+          continue;
+        }
+
+        // Add to colorize queue
+        colorizeQueue.push({
+          id: candidateRequest.getId(),
+          colour: colour,
+          findingId: "retroactive-match",
+        });
+
+        // Send colorization batch when queue is full
+        if (colorizeQueue.length >= COLORIZE_BATCH_SIZE) {
+          sdk.api.send("requests-matched", [...colorizeQueue]);
+          colorizeQueue = [];
+        }
+
+        totalProcessed++;
+      }
+
+      // Update cursor for next iteration
+      if (
+        connection.pageInfo &&
+        connection.pageInfo.hasNextPage &&
+        connection.pageInfo.endCursor
+      ) {
+        cursor = connection.pageInfo.endCursor;
+      } else {
+        cursor = undefined; // No more pages
+      }
+    } while (cursor);
+
+    // Send any remaining items in the colorize queue
+    if (colorizeQueue.length > 0) {
+      sdk.api.send("requests-matched", [...colorizeQueue]);
+    }
+  } catch (error) {
+    // Silent error handling, but send any queued items
+    if (colorizeQueue.length > 0) {
+      sdk.api.send("requests-matched", [...colorizeQueue]);
+    }
   }
 }

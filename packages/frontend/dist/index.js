@@ -7,9 +7,9 @@ const l = [
   "Purple",
   "Grey"
 ], s = /* @__PURE__ */ new Map();
-async function u(r, e, t) {
+async function u(e, t, o) {
   try {
-    const a = {
+    const n = {
       Red: "RED",
       Orange: "ORANGE",
       Yellow: "YELLOW",
@@ -17,16 +17,16 @@ async function u(r, e, t) {
       Blue: "BLUE",
       Purple: "PURPLE",
       Grey: "GREY"
-    }[String(t).trim()] || "YELLOW";
-    if (r.graphql && typeof r.graphql.updateRequestMetadata == "function")
+    }[String(o).trim()] || "YELLOW";
+    if (e.graphql && typeof e.graphql.updateRequestMetadata == "function")
       try {
-        const n = {
-          id: e,
+        const i = {
+          id: t,
           input: {
-            color: a
+            color: n
           }
-        }, i = await r.graphql.updateRequestMetadata(n);
-        if (i && !i.errors)
+        }, a = await e.graphql.updateRequestMetadata(i);
+        if (a && !a.errors)
           return !0;
       } catch {
       }
@@ -35,42 +35,62 @@ async function u(r, e, t) {
     return !1;
   }
 }
-async function c(r, e, t) {
+async function c(e, t, o) {
   try {
-    return s.set(r, e), t ? await u(t, r, e) : !1;
+    return s.set(e, t), o ? await u(o, e, t) : !1;
   } catch {
     return !1;
   }
 }
-async function p(r) {
+async function d(e, t) {
+  if (!t || !e.length) return;
+  const o = 10;
+  for (let r = 0; r < e.length; r += o) {
+    const i = e.slice(r, r + o).map(
+      (a) => c(a.id, a.colour, t)
+    );
+    try {
+      await Promise.all(i);
+    } catch {
+    }
+    r + o < e.length && await new Promise((a) => setTimeout(a, 10));
+  }
+}
+async function m(e) {
   try {
-    r.commands.register("colorize.similar", {
+    e.commands.register("colorize.similar", {
       name: "Color similar requests…",
-      async run(e) {
-        var t;
+      async run(t) {
+        var o;
         try {
-          const o = e.request ?? ((t = e.requests) == null ? void 0 : t[0]);
-          if (!(o != null && o.id))
+          const r = t.request ?? ((o = t.requests) == null ? void 0 : o[0]);
+          if (!(r != null && r.id))
             return;
-          const a = await d();
-          if (!a) return;
-          await r.backend.addHighlightRule(o.id, a), await c(o.id, a, r);
+          const n = await p();
+          if (!n) return;
+          await e.backend.addHighlightRule(
+            r.id,
+            r.method,
+            r.host,
+            r.path,
+            n
+          ), await c(r.id, n, e);
         } catch {
         }
       }
-    }), r.menu.registerItem({
+    }), e.menu.registerItem({
       type: "Request",
       commandId: "colorize.similar",
       leadingIcon: "fas fa-palette"
-    }), r.menu.registerItem({
+    }), e.menu.registerItem({
       type: "RequestRow",
       commandId: "colorize.similar",
       leadingIcon: "fas fa-palette"
-    }), r.backend.onEvent(
-      "request-matched",
-      async (e, t, o) => {
+    }), e.backend.onEvent(
+      "requests-matched",
+      async (t) => {
         try {
-          await c(e, t, r);
+          await d(t, e);
         } catch {
         }
       }
@@ -78,11 +98,11 @@ async function p(r) {
   } catch {
   }
 }
-async function d() {
-  return new Promise((r) => {
+async function p() {
+  return new Promise((e) => {
     try {
-      const e = document.createElement("dialog");
-      e.className = "colorizer-plugin", e.innerHTML = `
+      const t = document.createElement("dialog");
+      t.className = "colorizer-plugin", t.innerHTML = `
         <style>
           .colorizer-plugin dialog { 
             padding:1.5rem; 
@@ -109,18 +129,18 @@ async function d() {
         </style>
         <h3>Choose a color</h3>
         ${l.map(
-        (t) => `<button data-c="${t}" style="background:${t.toLowerCase()};color:white">${t}</button>`
+        (o) => `<button data-c="${o}" style="background:${o.toLowerCase()};color:white">${o}</button>`
       ).join("")}
         <button data-c="" style="background:#6b7280;color:white">Cancel</button>
-      `, e.addEventListener("click", (t) => {
-        const o = t.target.closest("button");
-        e.close(), r((o == null ? void 0 : o.dataset.c) || void 0);
-      }), document.body.append(e), e.showModal();
+      `, t.addEventListener("click", (o) => {
+        const r = o.target.closest("button");
+        t.close(), e((r == null ? void 0 : r.dataset.c) || void 0);
+      }), document.body.append(t), t.showModal();
     } catch {
-      r(void 0);
+      e(void 0);
     }
   });
 }
 export {
-  p as init
+  m as init
 };
