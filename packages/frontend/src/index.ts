@@ -17,14 +17,21 @@ async function setRequestColorViaSdkGraphQL(
   color: HighlightColour
 ): Promise<boolean> {
   try {
-    const variables = {
+    const {request} = await sdk.graphql.request({
       id: requestId,
+    });
+
+    if (!request) {
+      return false;
+    }
+
+    const metadataID = request.metadata.id;
+    const result = await sdk.graphql.updateRequestMetadata({
+      id: metadataID,
       input: {
         color: color,
       },
-    };
-
-    const result = await sdk.graphql.updateRequestMetadata(variables);
+    });
     if (result) {
       return true;
     }
